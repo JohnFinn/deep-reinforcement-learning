@@ -33,50 +33,54 @@ class World:
         self.last_observation = self.env.reset()
         self.last_info = None
 
-class MyConversions(torch.nn.Module):
-    def __init__(self):
+class LambdaLayer(torch.nn.Module):
+    def __init__(self, func):
         super().__init__()
+        self.func = func
 
     def forward(self, batch):
-        return batch.T[None, ...].double()
+        return self.func(batch)
 
 
 if __name__ == '__main__':
-    env : gym.core.Env = gym.make('CartPole-v1')
-    net = torch.nn.Sequential(
-            torch.nn.Linear(env.observation_space.shape[0], 8),
-            torch.nn.ReLU(),
-            torch.nn.Linear(8, 8),
-            torch.nn.ReLU(),
-            torch.nn.Linear(8, env.action_space.n),
-            torch.nn.Softmax(dim=-1)
-    ).double()
-    # env : gym.core.Env = gym.make('Pong-v0')
+    # env : gym.core.Env = gym.make('CartPole-v1')
     # net = torch.nn.Sequential(
-    #     torch.nn.Conv2d()
-    #     torch.nn.Linear(env.observation_space.shape[0], 8),
-    #     torch.nn.ReLU(),
-    #     torch.nn.Linear(8, 8),
-    #     torch.nn.ReLU(),
-    #     torch.nn.Linear(8, env.action_space.n),
-    #     torch.nn.Softmax(dim=-1)
+    #         torch.nn.Linear(env.observation_space.shape[0], 8),
+    #         torch.nn.ReLU(),
+    #         torch.nn.Linear(8, 8),
+    #         torch.nn.ReLU(),
+    #         torch.nn.Linear(8, env.action_space.n),
+    #         torch.nn.Softmax(dim=-1)
     # ).double()
+    env : gym.core.Env = gym.make('Pong-v0')
+    net = torch.nn.Sequential(
+        LambdaLayer(lambda batch: batch.T[None, ...].double()),
+        torch.nn.Conv2d(3,1,3),
+        torch.nn.Conv2d(1,1,3),
+        torch.nn.MaxPool2d(8),
+        torch.nn.Flatten(),
+        torch.nn.Linear(475, 8),
+        torch.nn.ReLU(),
+        torch.nn.Linear(8, 8),
+        torch.nn.ReLU(),
+        torch.nn.Linear(8, env.action_space.n),
+        torch.nn.Softmax(dim=-1)
+    ).double()
     drl_agent = DRLAgent(net=net)
 
     world = World(env, drl_agent)
-    anim = GraphAnimation('avg total reward', '')
+    # anim = GraphAnimation('avg total reward', '')
 
     for i in range(300):
         total_reward = 0
-        for j in range(10):
+        for j in range(1):
             world.reset_env()
             while not world.done:
-                if j == 0 and i % 10 == 0:
-                    world.render()
+                world.render()
                 total_reward += world.last_reward
                 world.step()
 
-        anim.extend_line1([i], [total_reward/10])
-        if i % 10 == 0:
-            anim.redraw()
+        # anim.extend_line1([i], [total_reward/10])
+        # if i % 10 == 0:
+        #     anim.redraw()
         drl_agent.optimize()

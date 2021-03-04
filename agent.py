@@ -46,8 +46,8 @@ class DRLAgent(Agent):
         self.optimizer = torch.optim.Adam(self.net.parameters(), lr=learning_rate)
 
     def act(self, observations: np.array):
-        prediction = self.net(torch.tensor(observations))
-        action = np.random.choice(range(len(prediction)), p=prediction.detach())
+        prediction = self.net(torch.tensor(observations)).flatten()
+        action = torch.distributions.Categorical(prediction).sample().item()
         self.experience.append(ExperiencePoint(prediction[action], 0.0))
         return action
 
@@ -56,7 +56,7 @@ class DRLAgent(Agent):
 
     def on_end_game(self):
         self.discount_future_rewards()
-        predicted = torch.cat([e.probabilities.reshape(1) for e in self.experience]).double()
+        predicted = torch.cat([e.probabilities.reshape(1) for e in self.experience])
         rewards = torch.tensor([e.reward for e in self.experience])
         self.games.append(GameStory(
             probabilities=predicted,
@@ -66,9 +66,6 @@ class DRLAgent(Agent):
 
 
     def discount_future_rewards(self):
-        # r0, r1, r2, ...
-        # rd0 = sum(ri * g^i) = r0 + g * r1 + g^2 * r2 + ...
-        # rdn = rn
         crt_discounted = 0
         for exp in reversed(self.experience):
             crt_discounted = exp.reward + self.discount * crt_discounted
@@ -78,7 +75,7 @@ class DRLAgent(Agent):
         rewards   = torch.cat([story.rewards       for story in self.games])
         predicted = torch.cat([story.probabilities for story in self.games])
 
-        loss = -(predicted.log() * rewards).mean()
+        loss = -((predicted + 1).log() * rewards).mean()
 
         self.optimizer.zero_grad()
         loss.backward()
