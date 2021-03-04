@@ -45,16 +45,17 @@ class LambdaLayer(torch.nn.Module):
 if __name__ == '__main__':
     # env : gym.core.Env = gym.make('CartPole-v1')
     # net = torch.nn.Sequential(
-    #         torch.nn.Linear(env.observation_space.shape[0], 8),
-    #         torch.nn.ReLU(),
-    #         torch.nn.Linear(8, 8),
-    #         torch.nn.ReLU(),
-    #         torch.nn.Linear(8, env.action_space.n),
-    #         torch.nn.Softmax(dim=-1)
-    # ).double()
+    #     LambdaLayer(lambda batch: batch.float()),
+    #     torch.nn.Linear(env.observation_space.shape[0], 8),
+    #     torch.nn.ReLU(),
+    #     torch.nn.Linear(8, 8),
+    #     torch.nn.ReLU(),
+    #     torch.nn.Linear(8, env.action_space.n),
+    #     torch.nn.Softmax(dim=-1)
+    # )
     env : gym.core.Env = gym.make('Pong-v0')
     net = torch.nn.Sequential(
-        LambdaLayer(lambda batch: batch.T[None, ...].double()),
+        LambdaLayer(lambda batch: batch.T[None, ...].float()),
         torch.nn.Conv2d(3,1,3),
         torch.nn.Conv2d(1,1,3),
         torch.nn.MaxPool2d(8),
@@ -65,7 +66,7 @@ if __name__ == '__main__':
         torch.nn.ReLU(),
         torch.nn.Linear(8, env.action_space.n),
         torch.nn.Softmax(dim=-1)
-    ).double()
+    )
     drl_agent = DRLAgent(net=net)
 
     world = World(env, drl_agent)
